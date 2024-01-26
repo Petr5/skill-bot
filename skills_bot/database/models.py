@@ -1,7 +1,8 @@
 from sqlalchemy import create_engine, Column, Integer, String, Sequence
+from sqlalchemy.dialects.mysql import aiomysql
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-
+from DB_config import DATABASE_URL
 Base = declarative_base()
 
 class User(Base):
@@ -11,7 +12,6 @@ class User(Base):
     username = Column(String(50), unique=True)
 
 # Replace 'DATABASE_URL' with your database URL
-DATABASE_URL = "postgresql+asyncpg://username:password@localhost/dbname"
 engine = create_engine(DATABASE_URL, echo=True)
 
 Base.metadata.create_all(bind=engine)

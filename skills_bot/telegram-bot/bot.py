@@ -1,29 +1,55 @@
+import asyncio
 import logging
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ParseMode
-from aiogram.utils import executor
-from aiogram.contrib.middlewares.logging import LoggingMiddleware
-from config import API_TOKEN
+import sys
+from os import getenv
+
+from aiogram import Bot, Dispatcher, Router, types
+from aiogram.enums import ParseMode
+from aiogram.filters import CommandStart
+from aiogram.types import Message
+from aiogram.utils.markdown import hbold
+
+# Bot token can be obtained via https://t.me/BotFather
+TOKEN = getenv("BOT_TOKEN")
+
+# All handlers should be attached to the Router (or Dispatcher)
+dp = Dispatcher()
+
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+    """
+    This handler receives messages with `/start` command
+    """
+    # Most event objects have aliases for API methods that can be called in events' context
+    # For example if you want to answer to incoming message you can use `message.answer(...)` alias
+    # and the target chat will be passed to :ref:`aiogram.methods.send_message.SendMessage`
+    # method automatically or call API method directly via
+    # Bot instance: `bot.send_message(chat_id=message.chat.id, ...)`
+    await message.answer(f"Hello, {hbold(message.from_user.full_name)}!")
 
 
-logging.basicConfig(level=logging.INFO)
+@dp.message()
+async def echo_handler(message: types.Message) -> None:
+    """
+    Handler will forward receive a message back to the sender
 
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot)
-dp.middleware.setup(LoggingMiddleware())
+    By default, message handler will handle all message types (like a text, photo, sticker etc.)
+    """
+    try:
+        # Send a copy of the received message
+        await message.send_copy(chat_id=message.chat.id)
+    except TypeError:
+        # But not all the types is supported to be copied so need to handle it
+        await message.answer("Nice try!")
 
 
-@dp.message_handler(commands=['start', 'help'])
-async def send_welcome(message: types.Message):
-    await message.reply("Hi! I am your bot. Type /register to register.")
+async def main() -> None:
+    # Initialize Bot instance with a default parse mode which will be passed to all API calls
+    bot = Bot(TOKEN, parse_mode=ParseMode.HTML)
+    # And the run events dispatching
+    await dp.start_polling(bot)
 
-@dp.message_handler(commands=['register'])
-async def register_user(message: types.Message):
-    # Assuming you have imported and set up the database session in models.py
-    async with AsyncSession() as session:
-        username = message.from_user.username
-        user = User(username=username)
-        session.add(user)
-        await session.commit()
 
-    await message.reply(f"User {username} registered successfully!")
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())
